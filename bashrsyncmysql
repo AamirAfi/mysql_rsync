@@ -1,0 +1,50 @@
+#!/bin/bash
+############################################
+##        MySql DB Dump Script Bash.      ##
+############################################
+
+# Database1 Credentials:
+ username="db_username"
+ password="dbpassword"
+ host="localhost"
+ db_name="dbname"
+
+# Rsync Server Credentials:the system which we going to backup
+ rsync_user="hostname"
+ rsync_pass="password"
+ rsync_host="ip_address"
+
+# Other options:
+ mysql_backup_path="~/"
+ date=$(date +"%d-%b-%Y")
+
+# Empty Backup Directory:
+rm -rf $backup_path/*.gz > /dev/null 2>&1
+rm -rf $backup_path/*.sql > /dev/null 2>&1
+
+# Dump database into SQL file:
+mysqldump -u$username -p$password -h $host $db_name > $mysql_backup_path/$db_name-$date.sql
+
+# Create a tarball:
+if [ "$?" -eq 0 ];
+then
+        cd  $mysql_backup_path && tar -cvzf $db_name-$date.sql.tar.gz  $db_name-$date.sql
+        if [ "$?" -eq 0 ];
+        then
+                # Delete SQL File:
+                rm -rf $mysql_backup_path/$db_name-$date.sql
+                sshpass -p $rsync_pass rsync -aP -e "ssh -o StrictHostKeyChecking=no" $db_name-$date.sql.tar.gz $rsync_user@$rsync_host:.
+                if [ "$?" -eq 0 ];
+                then
+                        echo " $db_name DATABASE BACKUP Rsync and was Successful."
+                else
+                        echo " $db_name Rsync was failed hence DB Backup was Failed."
+                fi
+        else
+                echo " $db_name TAR creation Unsuccessful hence Backup was Failed."
+        fi
+else
+        echo " $db_name DATABASE DUMP was Unsuccessful hence Backup was Failed."
+fi
+
+~                                                                             
